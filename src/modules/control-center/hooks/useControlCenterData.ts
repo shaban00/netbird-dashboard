@@ -9,6 +9,7 @@ import { Network, NetworkResource } from "@/interfaces/Network";
 import { Peer } from "@/interfaces/Peer";
 import { Policy } from "@/interfaces/Policy";
 import { User } from "@/interfaces/User";
+import { CloudAccess, CloudRole } from "@/interfaces/CloudAccess";
 
 export function useControlCenterData() {
   const { data: policies, isLoading: isPoliciesLoading } =
@@ -31,6 +32,12 @@ export function useControlCenterData() {
     "/users?service_user=false",
     true,
   );
+  const { data: cloudRoles, isLoading: isCloudRolesLoading } = useFetchApi<
+    CloudRole[]
+  >("/cloud-roles", true);
+  const { data: cloudAccess, isLoading: isCloudAccessLoading } = useFetchApi<
+    CloudAccess[]
+  >("/cloud-access", true);
 
   const isLoading =
     isPoliciesLoading ||
@@ -38,7 +45,9 @@ export function useControlCenterData() {
     isNetworksLoading ||
     isResourcesLoading ||
     isGroupsLoading ||
-    isUsersLoading;
+    isUsersLoading ||
+    isCloudRolesLoading ||
+    isCloudAccessLoading;
 
   const networkOptions: SelectOption[] = useMemo(() => {
     const allNetworks = sortBy(
@@ -75,6 +84,8 @@ export function useControlCenterData() {
     networkResources,
     groups,
     users,
+    cloudRoles,
+    cloudAccess,
     isPeersLoading,
     isNetworksLoading,
     isLoading,

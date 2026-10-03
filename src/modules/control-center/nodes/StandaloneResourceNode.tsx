@@ -2,7 +2,7 @@ import Button from "@components/Button";
 import { SmallBadge } from "@components/ui/SmallBadge";
 import { cn } from "@utils/helpers";
 import { type Node, Position, useConnection } from "@xyflow/react";
-import { AlertTriangleIcon, GlobeIcon, NetworkIcon, WorkflowIcon } from "lucide-react";
+import { AlertTriangleIcon, GlobeIcon, NetworkIcon, WorkflowIcon, CloudIcon } from "lucide-react";
 import * as React from "react";
 import { NetworkResource } from "@/interfaces/Network";
 import { useIsContextMenuTarget } from "@/modules/control-center/contexts/ControlCenterContext";
@@ -14,6 +14,11 @@ import {
 } from "@/modules/control-center/utils/helpers";
 import { AllHandles } from "@/modules/control-center/handles/AllHandles";
 import { ConnectHandle } from "@/modules/control-center/handles/ConnectHandle";
+import { CloudRole } from "@/interfaces/CloudAccess";
+import {
+  azureGUIDPattern,
+  gcpServiceAccountEmailSuffix,
+} from "@/modules/cloud-access/cloudProviderValidation";
 
 export const RESOURCE_TYPE_ICONS = {
   domain: GlobeIcon,
@@ -23,9 +28,33 @@ export const RESOURCE_TYPE_ICONS = {
 
 type StandaloneResourceNodeData = {
   resource?: NetworkResource;
+  cloudRole?: CloudRole;
+  cloudAccessProviderAccountId?: string;
   showHandles?: boolean;
   enabled?: boolean;
   draftNetwork?: DraftNetworkRef;
+};
+
+const cloudRoleSubtitle = (
+  principalRef?: string,
+  providerAccountId?: string,
+): string | undefined => {
+  if (!principalRef) return undefined;
+  if (principalRef.startsWith("arn:")) {
+    const accountId = providerAccountId ?? principalRef.split(":")[4];
+    return accountId ? `AWS · ${accountId}` : undefined;
+  }
+  if (principalRef.endsWith(gcpServiceAccountEmailSuffix)) {
+    return providerAccountId
+      ? `GCP · ${providerAccountId}`
+      : `GCP · ${principalRef.slice(0, -gcpServiceAccountEmailSuffix.length)}`;
+  }
+  if (azureGUIDPattern.test(principalRef)) {
+    return providerAccountId
+      ? `Azure · ${providerAccountId}`
+      : `Azure · ${principalRef}`;
+  }
+  return principalRef;
 };
 
 export const StandaloneResourceNode = ({
@@ -48,15 +77,19 @@ export const StandaloneResourceNode = ({
 
   const isDraftResource = id.startsWith("resource-new-");
   const node = { id, data, position: { x: 0, y: 0 } } as Node;
+  const cloudRole = data.cloudRole;
   const resource = isDraftResource ? getDraftResource(node) : data.resource;
-  if (!resource) return null;
+  if (!resource && !cloudRole) return null;
 
-  const Icon = RESOURCE_TYPE_ICONS[resource.type ?? "host"] ?? GlobeIcon;
+  const Icon = cloudRole
+    ? CloudIcon
+    : (RESOURCE_TYPE_ICONS[resource!.type ?? "host"] ?? GlobeIcon);
   // The live single-network view renders the same card read-only.
   const editable = isDraft;
   // An empty ref still reads as "No Network".
   const network = data.draftNetwork;
-  const hasNetwork = !!(network?.networkId || network?.networkClientId);
+  // Cloud roles don't belong to a NetBird network.
+  const hasNetwork = !cloudRole && !!(network?.networkId || network?.networkClientId);
 
   return (
     <div
@@ -70,11 +103,11 @@ export const StandaloneResourceNode = ({
           "opacity-60",
       )}
       onClick={() => {
-        if (editable) setResourceEditor({ nodeId: id });
+        if (editable && !cloudRole) setResourceEditor({ nodeId: id });
       }}
     >
       {/* Hidden for drilled children: they sit inside their network. */}
-      {!hasNetwork && editable && !hideNetwork && (
+      {!hasNetwork && editable && !hideNetwork && !cloudRole && (
         <div className={"absolute bottom-full left-0 mb-3 nodrag"}>
           <Button
             variant={"secondary"}
@@ -105,7 +138,9 @@ export const StandaloneResourceNode = ({
               "font-normal text-[0.85rem] text-nb-gray-100 flex items-center gap-1.5 mb-1 mt-1 relative top-[0.05rem]"
             }
           >
-            <span className={"truncate max-w-[120px]"}>{resource.name}</span>
+            <span className={"truncate max-w-[120px]"}>
+              {cloudRole ? cloudRole.name : resource!.name}
+            </span>
             {/* Existing resources can't be reassigned in v1. */}
             {hasNetwork && !hideNetwork && (
               <span
@@ -130,7 +165,12 @@ export const StandaloneResourceNode = ({
               "font-normal text-sm text-nb-gray-500 relative -top-[0.1rem]"
             }
           >
-            {resource.address || "IP, CIDR or Domain"}
+            {cloudRole
+              ? cloudRoleSubtitle(
+                  cloudRole.principal_ref,
+                  data.cloudAccessProviderAccountId,
+                )
+              : resource!.address || "IP, CIDR or Domain"}
           </span>
         </div>
       </div>

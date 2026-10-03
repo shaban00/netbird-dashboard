@@ -28,6 +28,8 @@ import { SmallBadge } from "@components/ui/SmallBadge";
 import * as React from "react";
 import ReverseProxyIcon from "@/assets/icons/ReverseProxyIcon";
 import ActivityIcon from "@/assets/icons/ActivityIcon";
+import { useCloudFederationEnabled } from "@/modules/cloud-access/useCloudFederationEnabled";
+import { CloudIcon } from "lucide-react";
 
 type Props = {
   fullWidth?: boolean;
@@ -41,6 +43,7 @@ export default function Navigation({
   const { bannerHeight } = useAnnouncement();
   const { isNavigationCollapsed } = useApplicationContext();
   const { permission } = usePermissions();
+  const { enabled: cloudFederationEnabled } = useCloudFederationEnabled();
   // "enabled" already falls back to the caller's agent_network grants when
   // the feature flag can't be resolved (no accounts read — usage_viewer and
   // custom delegated roles), so it is the one surface switch here.
@@ -194,6 +197,28 @@ export default function Navigation({
                     visible={permission?.services?.read}
                   />
                 </SidebarItem>
+
+                <SidebarItem
+                  icon={<CloudIcon size={16} />}
+                  labelClassName={"pr-0"}
+                  label={
+                    <div className={"flex items-center gap-2"}>
+                      Cloud Access
+                      <SmallBadge
+                        text={"Beta"}
+                        variant={"sky"}
+                        className={"text-[8px] leading-none py-[3px] px-[5px]"}
+                        textClassName={"top-0"}
+                      />
+                    </div>
+                  }
+                  href={"/cloud-access"}
+                  exactPathMatch={true}
+                  visible={
+                    !!permission?.cloud_access?.read &&
+                    cloudFederationEnabled
+                  }
+                />
 
                 <SidebarItem
                   icon={<AgentNetworkIcon size={16} />}

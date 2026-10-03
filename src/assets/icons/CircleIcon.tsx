@@ -4,7 +4,7 @@ import React from "react";
 type Props = {
   active?: boolean;
   size?: number;
-  inactiveDot?: "gray" | "red";
+  inactiveDot?: "gray" | "red" | "yellow";
   className?: string;
 };
 export default function CircleIcon({
@@ -23,6 +23,8 @@ export default function CircleIcon({
           ? "bg-green-400"
           : inactiveDot == "gray"
           ? "bg-nb-gray-500"
+          : inactiveDot == "yellow"
+          ? "bg-yellow-500"
           : "bg-red-500",
         className,
       )}

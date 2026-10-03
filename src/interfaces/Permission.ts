@@ -44,6 +44,8 @@ export interface Permissions {
     "agent_network.usage": Permission;
     "agent_network.logs": Permission;
     "agent_network.settings": Permission;
+
+    cloud_access: Permission;
   };
 }
 

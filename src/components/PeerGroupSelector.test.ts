@@ -16,6 +16,7 @@ const base = {
   showClusters: false,
   showPeers: false,
   showResources: false,
+  showCloudIntegrations: false,
   hideGroupsTab: false,
 };
 
@@ -49,6 +50,19 @@ describe("getOpeningTab", () => {
         showResources: true,
       }),
     ).toBe("resources");
+  });
+
+  it("snaps to the cloud integrations tab for a cloud_integration resource", () => {
+    expect(
+      getOpeningTab({
+        ...base,
+        currentTab: "peers",
+        showPeers: true,
+        hasResource: true,
+        resourceType: "cloud_integration",
+        showCloudIntegrations: true,
+      }),
+    ).toBe("cloudIntegrations");
   });
 
   it("snaps to the clusters tab when a cluster is selected", () => {

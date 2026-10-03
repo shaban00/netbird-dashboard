@@ -9,6 +9,10 @@ import React, { useMemo } from "react";
 import RoundedFlag from "@/assets/countries/RoundedFlag";
 import { useCountries } from "@/contexts/CountryProvider";
 import { ActivityEvent } from "@/interfaces/ActivityEvent";
+import {
+  CloudProviderName,
+  cloudProviderNameLabels,
+} from "@/interfaces/CloudAccess";
 
 type Props = {
   event: ActivityEvent;
@@ -694,6 +698,107 @@ export default function ActivityDescription({ event }: Props) {
     );
 
   /**
+   * Cloud Access
+   */
+  if (event.activity_code == "cloud_credentials.request")
+    return (
+      <div className={"inline"}>
+        Cloud credentials requested
+        {m.name && (
+          <>
+            {" "}
+            for role <CloudRoleBadge meta={m} />
+          </>
+        )}
+      </div>
+    );
+
+  if (event.activity_code == "cloud_credentials.allow")
+    return (
+      <div className={"inline"}>
+        Cloud access allowed for role <CloudRoleBadge meta={m} />
+      </div>
+    );
+
+  if (event.activity_code == "cloud_credentials.deny")
+    return (
+      <div className={"inline"}>
+        Cloud access denied
+        {m.name && (
+          <>
+            {" "}
+            for role <CloudRoleBadge meta={m} />
+          </>
+        )}
+      </div>
+    );
+
+  if (event.activity_code == "cloud_credentials.issue")
+    return (
+      <div className={"inline"}>
+        Cloud credentials issued for role <CloudRoleBadge meta={m} />
+      </div>
+    );
+
+  if (event.activity_code == "cloud_role.create")
+    return (
+      <div className={"inline"}>
+        Cloud role <CloudRoleBadge meta={m} /> was created
+      </div>
+    );
+
+  if (event.activity_code == "cloud_role.update")
+    return (
+      <div className={"inline"}>
+        Cloud role <CloudRoleBadge meta={m} /> was updated
+      </div>
+    );
+
+  if (event.activity_code == "cloud_role.delete")
+    return (
+      <div className={"inline"}>
+        Cloud role <CloudRoleBadge meta={m} /> was deleted
+      </div>
+    );
+
+  if (event.activity_code == "cloud_role.validate.success")
+    return (
+      <div className={"inline"}>
+        Cloud role <CloudRoleBadge meta={m} /> trust relationship validated
+        successfully
+      </div>
+    );
+
+  if (event.activity_code == "cloud_role.validate.failure")
+    return (
+      <div className={"inline"}>
+        Cloud role <CloudRoleBadge meta={m} /> trust relationship failed
+        validation
+      </div>
+    );
+
+  if (event.activity_code == "cloud_access.create")
+    return (
+      <div className={"inline"}>
+        Cloud access connection <CloudRoleBadge meta={m} /> was created
+      </div>
+    );
+
+  if (event.activity_code == "cloud_access.update")
+    return (
+      <div className={"inline"}>
+        Cloud access connection <CloudRoleBadge meta={m} /> was updated
+      </div>
+    );
+
+  if (event.activity_code == "cloud_access.delete")
+    return (
+      <div className={"inline"}>
+        Cloud access connection <CloudRoleBadge meta={m} /> was deleted
+      </div>
+    );
+
+  /**
    * Reverse Proxy
    */
 
@@ -991,6 +1096,20 @@ function Value({
       {children}
     </span>
   ) : null;
+}
+
+function CloudRoleBadge({ meta }: { meta: any }) {
+  const provider = meta?.provider as CloudProviderName | undefined;
+  return (
+    <>
+      {provider && (
+        <>
+          <Value>{cloudProviderNameLabels[provider] ?? provider}</Value>{" "}
+        </>
+      )}
+      <Value>{meta?.name}</Value>
+    </>
+  );
 }
 
 function PeerConnectionInfo({ meta }: { meta: any }) {

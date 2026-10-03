@@ -17,8 +17,16 @@ import { useControlCenterData } from "@/modules/control-center/hooks/useControlC
 import { withFreshGroupCounts } from "@/modules/control-center/utils/helpers";
 
 export function useGroupView() {
-  const { policies, peers, networks, networkResources, groups, isDataReady } =
-    useControlCenterData();
+  const {
+    policies,
+    peers,
+    networks,
+    networkResources,
+    groups,
+    cloudRoles,
+    cloudAccess,
+    isDataReady,
+  } = useControlCenterData();
   const agentNetwork = useAgentNetworkOverlay();
 
   // policiesOverride rebuilds from data fresher than the SWR cache.
@@ -143,6 +151,8 @@ export function useGroupView() {
         peers!,
         networkResources!,
         networks,
+        cloudRoles,
+        cloudAccess,
       );
     });
 

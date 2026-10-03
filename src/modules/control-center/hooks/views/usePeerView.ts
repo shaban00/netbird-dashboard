@@ -17,8 +17,16 @@ import {
 import { addDestinationResourceNodes, ViewResult } from "./types";
 
 export function usePeerView() {
-  const { policies, peers, networks, networkResources, groups, isDataReady } =
-    useControlCenterData();
+  const {
+    policies,
+    peers,
+    networks,
+    networkResources,
+    groups,
+    cloudRoles,
+    cloudAccess,
+    isDataReady,
+  } = useControlCenterData();
   const agentNetwork = useAgentNetworkOverlay();
 
   const applyPeerView = (
@@ -90,6 +98,8 @@ export function usePeerView() {
         peers!,
         networkResources!,
         networks,
+        cloudRoles,
+        cloudAccess,
       );
     });
 

@@ -1,16 +1,18 @@
 import Badge from "@components/Badge";
 import TruncatedText from "@components/ui/TruncatedText";
 import { cn } from "@utils/helpers";
-import { GlobeIcon, NetworkIcon, WorkflowIcon, XIcon } from "lucide-react";
+import { GlobeIcon, NetworkIcon, WorkflowIcon, XIcon, CloudIcon } from "lucide-react";
 import * as React from "react";
 import { NetworkResource } from "@/interfaces/Network";
 import { Peer } from "@/interfaces/Peer";
 import { OperatingSystem } from "@/interfaces/OperatingSystem";
 import { PeerOperatingSystemIcon } from "@/modules/peers/PeerOperatingSystemIcon";
+import { CloudRole } from "@/interfaces/CloudAccess";
 
 type Props = {
   resource?: NetworkResource;
   peer?: Peer;
+  cloudRole?: CloudRole;
   onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
   showX?: boolean;
   children?: React.ReactNode;
@@ -20,14 +22,16 @@ export default function ResourceBadge({
   onClick,
   resource,
   peer,
+  cloudRole,
   showX = false,
   children,
   className,
 }: Readonly<Props>) {
-  if (!resource && !peer) return;
+  if (!resource && !peer && !cloudRole) return;
 
   const isPeer = !!peer;
-  const key = resource ? resource.id || resource?.name : peer?.id || peer?.name;
+  const isCloudRole = !!cloudRole;
+  const key = resource ? resource.id || resource?.name : peer ? peer?.id || peer?.name : cloudRole?.id || cloudRole?.name;
 
   return (
     <Badge
@@ -49,6 +53,11 @@ export default function ResourceBadge({
         <>
           <PeerOperatingSystemIcon os={peer?.os} />
           <TruncatedText text={peer?.name || ""} maxChars={20} />
+        </>
+      ) : isCloudRole ? (
+        <>
+          <ResourceIcon type={"cloud_integration"} />
+          <TruncatedText text={cloudRole?.name || ""} maxChars={20} />
         </>
       ) : (
         <>
@@ -78,6 +87,8 @@ const ResourceIcon = ({ type }: { type: string }) => {
       return <GlobeIcon size={12} className={"shrink-0"} />;
     case "subnet":
       return <NetworkIcon size={12} className={"shrink-0"} />;
+    case "cloud_integration":
+      return <CloudIcon size={12} className={"shrink-0"} />;
     default:
       // Draft resources without an address have no type yet — default icon.
       return <WorkflowIcon size={12} className={"shrink-0"} />;

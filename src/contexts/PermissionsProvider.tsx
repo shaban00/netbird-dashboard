@@ -47,6 +47,7 @@ const MODULE_KEYS: Array<keyof Permissions["modules"]> = [
   "agent_network.usage",
   "agent_network.logs",
   "agent_network.settings",
+  "cloud_access",
 ];
 
 const DENIED: Permission = {

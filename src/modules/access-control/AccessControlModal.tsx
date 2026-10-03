@@ -318,62 +318,64 @@ export function AccessControlModalContent({
 
         <TabsContent value={"policy"} className={"pb-8"}>
           <div className={"px-8 flex-col flex gap-6"}>
-            <div
-              className={"flex justify-between items-center gap-10"}
-              data-testid={"protocol-wrapper"}
-            >
-              <div className={"w-full"}>
-                <Label>Protocol</Label>
-                <HelpText className={"max-w-sm"}>
-                  Allow only specified network protocols. To change traffic
-                  direction and ports, select{" "}
-                  <b className={"text-white"}>TCP</b> or{" "}
-                  <b className={"text-white"}>UDP</b> protocol.
-                </HelpText>
-              </div>
-              <Select
-                value={protocol}
-                onValueChange={(v) => handleProtocolChange(v as Protocol)}
-                disabled={
-                  !permission.policies.update || !permission.policies.create
-                }
+            {destinationResource?.type !== "cloud_integration" && (
+              <div
+                className={"flex justify-between items-center gap-10"}
+                data-testid={"protocol-wrapper"}
               >
-                <SelectTrigger className="w-[280px]">
-                  <div
-                    className={"flex items-center gap-3"}
-                    data-testid={"protocol-select-button"}
-                  >
-                    <Share2 size={15} className={"text-nb-gray-300"} />
-                    <SelectValue placeholder="Select protocol..." />
-                  </div>
-                </SelectTrigger>
-                <SelectContent data-testid={"protocol-selection"}>
-                  <SelectItem value="all">ALL</SelectItem>
-                  <SelectItem value="tcp">TCP</SelectItem>
-                  <SelectItem value="udp">UDP</SelectItem>
-                  <SelectItem value="icmp">ICMP</SelectItem>
-                  <SelectItem
-                    value="netbird-ssh"
-                    extra={
-                      <HelpTooltip
-                        triggerClassName={"ml-[0.01rem]"}
-                        align={"center"}
-                        side={"right"}
-                        content={
-                          <>
-                            Select NetBird SSH for SSH-specific policies with
-                            fine-grained access control, or use TCP with port 22
-                            for basic network-level SSH access
-                          </>
-                        }
-                      />
-                    }
-                  >
-                    NetBird SSH
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                <div className={"w-full"}>
+                  <Label>Protocol</Label>
+                  <HelpText className={"max-w-sm"}>
+                    Allow only specified network protocols. To change traffic
+                    direction and ports, select{" "}
+                    <b className={"text-white"}>TCP</b> or{" "}
+                    <b className={"text-white"}>UDP</b> protocol.
+                  </HelpText>
+                </div>
+                <Select
+                  value={protocol}
+                  onValueChange={(v) => handleProtocolChange(v as Protocol)}
+                  disabled={
+                    !permission.policies.update || !permission.policies.create
+                  }
+                >
+                  <SelectTrigger className="w-[280px]">
+                    <div
+                      className={"flex items-center gap-3"}
+                      data-testid={"protocol-select-button"}
+                    >
+                      <Share2 size={15} className={"text-nb-gray-300"} />
+                      <SelectValue placeholder="Select protocol..." />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent data-testid={"protocol-selection"}>
+                    <SelectItem value="all">ALL</SelectItem>
+                    <SelectItem value="tcp">TCP</SelectItem>
+                    <SelectItem value="udp">UDP</SelectItem>
+                    <SelectItem value="icmp">ICMP</SelectItem>
+                    <SelectItem
+                      value="netbird-ssh"
+                      extra={
+                        <HelpTooltip
+                          triggerClassName={"ml-[0.01rem]"}
+                          align={"center"}
+                          side={"right"}
+                          content={
+                            <>
+                              Select NetBird SSH for SSH-specific policies with
+                              fine-grained access control, or use TCP with port 22
+                              for basic network-level SSH access
+                            </>
+                          }
+                        />
+                      }
+                    >
+                      NetBird SSH
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className={"flex gap-6 items-center"}>
               <div className={"w-full self-start"}>
@@ -440,6 +442,11 @@ export function AccessControlModalContent({
                   placeholder={"Select destination(s)..."}
                   showRoutes={true}
                   showResources={protocol !== "netbird-ssh"}
+                  showCloudIntegrations={
+                    protocol !== "netbird-ssh" &&
+                    !destinationScope &&
+                    !!permission.cloud_access?.read
+                  }
                   showPeers={!destinationScope}
                   resourceIds={destinationScope?.resourceIds}
                   groupIds={destinationScope?.groupIds}
@@ -481,7 +488,15 @@ export function AccessControlModalContent({
                 </Callout>
               )}
 
-            {protocol === "netbird-ssh" ? (
+            {destinationResource?.type === "cloud_integration" ? (
+              <Callout variant={"info"} className="mb-2 mt-2">
+                This policy controls who may <b>request</b> a federated
+                identity for this cloud integration. It does not grant any
+                permissions itself — the role&apos;s own trust policy and the
+                provider&apos;s own IAM decide what that identity can actually
+                do.
+              </Callout>
+            ) : protocol === "netbird-ssh" ? (
               <div>
                 {destinationHasResources && (
                   <Callout

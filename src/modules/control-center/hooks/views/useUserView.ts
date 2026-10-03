@@ -9,8 +9,16 @@ import { useControlCenterData } from "@/modules/control-center/hooks/useControlC
 import { withFreshGroupCounts } from "@/modules/control-center/utils/helpers";
 
 export function useUserView() {
-  const { policies, peers, networks, networkResources, groups, isDataReady } =
-    useControlCenterData();
+  const {
+    policies,
+    peers,
+    networks,
+    networkResources,
+    groups,
+    cloudRoles,
+    cloudAccess,
+    isDataReady,
+  } = useControlCenterData();
 
   const applyUserView = (
     userId: string,
@@ -129,6 +137,8 @@ export function useUserView() {
         peers!,
         networkResources!,
         networks,
+        cloudRoles,
+        cloudAccess,
       );
     });
 

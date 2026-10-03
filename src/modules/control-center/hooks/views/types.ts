@@ -1,7 +1,8 @@
+import { Edge, Node } from "@xyflow/react";
+import { CloudAccess, CloudRole } from "@/interfaces/CloudAccess";
 import { Network, NetworkResource } from "@/interfaces/Network";
 import { Peer } from "@/interfaces/Peer";
 import { Policy } from "@/interfaces/Policy";
-import { Edge, Node } from "@xyflow/react";
 
 export interface ViewResult {
   updatedNodes: Node[];
@@ -17,6 +18,8 @@ export function addDestinationResourceNodes(
   peers: Peer[] | undefined,
   networkResources: NetworkResource[],
   networks?: Network[],
+  cloudRoles?: CloudRole[],
+  cloudAccess?: CloudAccess[],
 ) {
   const destinationPolicyResource = policy?.rules?.[0].destinationResource;
   const enabled = policy.enabled;
@@ -28,6 +31,9 @@ export function addDestinationResourceNodes(
   const resource = networkResources.find(
     (r) => r.id === destinationPolicyResource.id,
   );
+  const cloudRole = cloudRoles?.find(
+    (c) => c.id === destinationPolicyResource.id,
+  );
   const nodeId = `destination-resource-${destinationPolicyResource.id}`;
   const nodeExists = nodes.some((n) => n.id === nodeId);
 
@@ -37,6 +43,21 @@ export function addDestinationResourceNodes(
         id: nodeId,
         type: "destinationResourceNode",
         data: { peer, enabled, standalone: true },
+        position: { x: 0, y: 0 },
+      });
+    } else if (type === "cloud_integration" && cloudRole) {
+      const parentAccess = cloudAccess?.find(
+        (a) => a.id === cloudRole.cloud_access_id,
+      );
+      nodes.push({
+        id: nodeId,
+        type: "destinationResourceNode",
+        data: {
+          cloudRole,
+          enabled,
+          standalone: true,
+          cloudAccessProviderAccountId: parentAccess?.provider_account_id,
+        },
         position: { x: 0, y: 0 },
       });
     } else if (resource) {
@@ -64,6 +85,8 @@ export function addDestinationResourceNodes(
       }
     });
   }
+
+  if (!nodes.some((n) => n.id === nodeId)) return;
 
   const edgeExists = edges.some(
     (e) => e.id === `policy-dest-resource-${policy.id}-${nodeId}`,

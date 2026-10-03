@@ -78,6 +78,7 @@ export function useSelectNodeHandlers(params: UseSelectNodeHandlersParams) {
     setSelectedUser,
     setSelectedDestinationGroup,
     setLiveResourceEditor,
+    setLiveCloudRoleEditor,
     loggedInUser,
   } = useCanvasState();
 
@@ -502,6 +503,30 @@ export function useSelectNodeHandlers(params: UseSelectNodeHandlersParams) {
           })();
         }
       }
+      // Cloud role nodes are always standalone destinationResourceNodes
+      if (!isDraft && isResourceNode) {
+        const cloudRole = (
+          _node.data as { cloudRole?: { id?: string; name?: string; cloud_access_id?: string } }
+        )?.cloudRole;
+        if (cloudRole?.id && cloudRole.cloud_access_id) {
+          void (async () => {
+            const choice = await confirm({
+              title: `Edit cloud role “${cloudRole.name ?? "Role"}”?`,
+              description:
+                "You are in live mode. Saving your changes will apply them to your account immediately.",
+              confirmText: "Edit",
+              cancelText: "Cancel",
+              type: "warning",
+              dismissOnOutsideClick: true,
+            });
+            if (!choice) return;
+            setLiveCloudRoleEditor({
+              roleId: cloudRole.id!,
+              cloudAccessId: cloudRole.cloud_access_id!,
+            });
+          })();
+        }
+      }
       // Placeholders included: their group assignments become the setup key's
       // auto-assigned groups and deploy once the peer installs.
       const isPeerNode =
@@ -530,6 +555,7 @@ export function useSelectNodeHandlers(params: UseSelectNodeHandlersParams) {
       openAgentPolicy,
       setSelectedPeerPanel,
       setLiveResourceEditor,
+      setLiveCloudRoleEditor,
       confirm,
     ],
   );

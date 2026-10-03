@@ -36,6 +36,7 @@ import {
   ShieldCheck,
   WorkflowIcon,
   XIcon,
+  CloudIcon
 } from "lucide-react";
 import * as React from "react";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -49,12 +50,18 @@ import { Policy, PolicyRuleResource } from "@/interfaces/Policy";
 import { User } from "@/interfaces/User";
 import { PeerOperatingSystemIcon } from "@/modules/peers/PeerOperatingSystemIcon";
 import { HorizontalUsersStack } from "@/modules/users/HorizontalUsersStack";
+import {
+  CloudAccess,
+  cloudProviderNameLabels,
+  CloudRole,
+} from "@/interfaces/CloudAccess";
 
 export type PeerGroupSelectorTab =
   | "peers"
   | "groups"
   | "resources"
-  | "clusters";
+  | "clusters"
+  | "cloudIntegrations";
 
 export const getOpeningTab = (params: {
   currentTab: PeerGroupSelectorTab;
@@ -64,6 +71,7 @@ export const getOpeningTab = (params: {
   showClusters: boolean;
   showPeers: boolean;
   showResources: boolean;
+  showCloudIntegrations: boolean;
   hideGroupsTab: boolean;
   tabOrder?: PeerGroupSelectorTab[];
   initialTab?: PeerGroupSelectorTab;
@@ -76,6 +84,7 @@ export const getOpeningTab = (params: {
     showClusters,
     showPeers,
     showResources,
+    showCloudIntegrations,
     hideGroupsTab,
     tabOrder,
     initialTab,
@@ -86,6 +95,7 @@ export const getOpeningTab = (params: {
     if (tab === "groups") return !hideGroupsTab;
     if (tab === "peers") return showPeers;
     if (tab === "resources") return showResources;
+    if (tab === "cloudIntegrations") return showCloudIntegrations;
     return showClusters;
   };
 
@@ -98,6 +108,7 @@ export const getOpeningTab = (params: {
 
   if (hasResource) {
     if (resourceType === "peer") return showPeers ? "peers" : defaultTab();
+    if (resourceType === "cloud_integration") return showCloudIntegrations ? "cloudIntegrations" : defaultTab();
     return showResources ? "resources" : defaultTab();
   }
   if (hasSelectedCluster && showClusters) return "clusters";
@@ -135,6 +146,7 @@ interface MultiSelectProps {
   "data-testid"?: string;
   showResourceCounter?: boolean;
   showResources?: boolean;
+  showCloudIntegrations?: boolean;
   showPeers?: boolean;
   showPeerCounter?: boolean;
   hideGroupsTab?: boolean;
@@ -180,6 +192,7 @@ export function PeerGroupSelector({
   "data-testid": dataTestId = "group-selector-dropdown",
   showResourceCounter = true,
   showResources = false,
+  showCloudIntegrations = false,
   showPeers = false,
   showPeerCounter = true,
   hideGroupsTab = false,
@@ -222,6 +235,35 @@ export function PeerGroupSelector({
 
   const { data: fetchedPeers, isLoading: isPeersLoading } =
     useFetchApi<Peer[]>("/peers");
+
+  // Cloud roles sit behind their own permission, like network resources do
+  // — callers without it get a plain selector instead of a 403.
+  const {
+    data: fetchedCloudIntegrations,
+    isLoading: isCloudIntegrationsLoading,
+  } = useFetchApi<CloudRole[]>(
+    "/cloud-roles",
+    false,
+    true,
+    showCloudIntegrations && !!permission?.cloud_access?.read,
+  );
+  
+  const cloudIntegrations = useMemo(
+    () => fetchedCloudIntegrations?.filter((c) => c.status === "connected"),
+    [fetchedCloudIntegrations],
+  );
+
+  const { data: cloudAccessList } = useFetchApi<CloudAccess[]>(
+    "/cloud-access",
+    false,
+    true,
+    showCloudIntegrations && !!permission?.cloud_access?.read,
+  );
+  const cloudAccessById = useMemo(() => {
+    const byId: Record<string, CloudAccess> = {};
+    cloudAccessList?.forEach((a) => (byId[a.id] = a));
+    return byId;
+  }, [cloudAccessList]);
 
   const peers = useMemo(() => {
     if (!additionalPeers?.length) return fetchedPeers;
@@ -389,6 +431,7 @@ export function PeerGroupSelector({
     if (tab === "resources") return "Search resource...";
     if (tab === "peers") return "Search peer by name or ip...";
     if (tab === "clusters") return "Search cluster...";
+    if (tab === "cloudIntegrations") return "Search cloud integration...";
     return "Search...";
   }, [tab, placeholderForSearch]);
 
@@ -426,6 +469,21 @@ export function PeerGroupSelector({
     }
   };
 
+  const selectCloudIntegration = (integration?: CloudRole) => {
+    onResourceChange?.(
+      integration
+        ? ({
+            id: integration.id,
+            type: "cloud_integration",
+          } as PolicyRuleResource)
+        : undefined,
+    );
+    onChange([]);
+    if (closeOnSelect) {
+      setOpen(false);
+    }
+  };
+
   const selectPeer = (peer?: Peer) => {
     if (!peer?.id) return;
     onResourceChange?.({
@@ -452,6 +510,7 @@ export function PeerGroupSelector({
               showClusters,
               showPeers,
               showResources,
+              showCloudIntegrations,
               hideGroupsTab,
               tabOrder,
               initialTab,
@@ -493,17 +552,30 @@ export function PeerGroupSelector({
                   className={"py-[3px]"}
                   resource={
                     resources?.find((r) => r.id === resource.id) ??
-                    ({
-                      id: resource.id,
-                      name: resource.id,
-                      type: resource.type,
-                    } as NetworkResource)
+                    (resource.type === "cloud_integration"
+                      ? ({
+                          id: resource.id,
+                          name:
+                            cloudIntegrations?.find(
+                              (ci) => ci.id === resource.id,
+                            )?.name ?? resource.id,
+                          type: resource.type,
+                        } as unknown as NetworkResource)
+                      : ({
+                          id: resource.id,
+                          name: resource.id,
+                          type: resource.type,
+                        } as NetworkResource))
                   }
                   peer={peers?.find((p) => p.id === resource.id)}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    selectResource();
+                    if (resource.type === "cloud_integration") {
+                      selectCloudIntegration();
+                    } else {
+                      selectResource();
+                    }
                   }}
                   showX={true}
                 />
@@ -658,6 +730,7 @@ export function PeerGroupSelector({
                 searchRef={searchRef}
                 showPeers={showPeers}
                 showResources={showResources}
+                showCloudIntegrations={showCloudIntegrations}
                 showClusters={showClusters}
                 hideGroupsTab={hideGroupsTab}
                 tabOrder={tabOrder}
@@ -807,6 +880,18 @@ export function PeerGroupSelector({
                   />
                 </TabsContent>
               )}
+              {showCloudIntegrations && (
+                <TabsContent value={"cloudIntegrations"} className={"p-0 my-0"}>
+                  <CloudIntegrationsList
+                    search={search}
+                    integrations={cloudIntegrations}
+                    cloudAccessById={cloudAccessById}
+                    isLoading={isCloudIntegrationsLoading}
+                    value={resource}
+                    onChange={selectCloudIntegration}
+                  />
+                </TabsContent>
+              )}
               {showPeers && (
                 <TabsContent value={"peers"} className={"p-0 my-0"}>
                   <PeersList
@@ -839,6 +924,7 @@ const TabTriggers = ({
   searchRef,
   showResources = false,
   showPeers = false,
+  showCloudIntegrations = false,
   showClusters = false,
   hideGroupsTab = false,
   tabOrder,
@@ -846,6 +932,7 @@ const TabTriggers = ({
   searchRef: React.MutableRefObject<HTMLInputElement | null>;
   showResources?: boolean;
   showPeers?: boolean;
+  showCloudIntegrations?: boolean;
   showClusters?: boolean;
   hideGroupsTab?: boolean;
   tabOrder?: PeerGroupSelectorTab[];
@@ -854,6 +941,7 @@ const TabTriggers = ({
     (!hideGroupsTab ? 1 : 0) +
     (showResources ? 1 : 0) +
     (showPeers ? 1 : 0) +
+    (showCloudIntegrations ? 1 : 0) +
     (showClusters ? 1 : 0);
   if (tabCount <= 1) return null;
 
@@ -925,11 +1013,29 @@ const TabTriggers = ({
     </TabsTrigger>
   );
 
+  const cloudIntegrationsTab = showCloudIntegrations && (
+    <TabsTrigger
+      key="cloudIntegrations"
+      value={"cloudIntegrations"}
+      className={"text-[.8rem] font-normal"}
+      onClick={() => searchRef.current?.focus()}
+    >
+      <CloudIcon
+        className={
+          "text-nb-gray-500 group-data-[state=active]/trigger:text-netbird transition-all"
+        }
+        size={14}
+      />
+      Cloud
+    </TabsTrigger>
+  );
+
   const tabMap: Record<PeerGroupSelectorTab, React.ReactNode> = {
     groups: groupsTab,
     peers: peersTab,
     resources: resourcesTab,
     clusters: clustersTab,
+    cloudIntegrations: cloudIntegrationsTab,
   };
 
   if (tabOrder) {
@@ -945,6 +1051,7 @@ const TabTriggers = ({
       {groupsTab}
       {resourcesTab}
       {peersTab}
+      {cloudIntegrationsTab}
       {clustersTab}
     </TabsList>
   );
@@ -1164,6 +1271,107 @@ const ResourcesList = ({
           );
         }}
       />
+    </Radio>
+  );
+};
+
+const cloudIntegrationsSearchPredicate = (item: CloudRole, query: string) => {
+  const lowerCaseQuery = query.toLowerCase();
+  if (item.name.toLowerCase().includes(lowerCaseQuery)) return true;
+  return (item.principal_name ?? "").toLowerCase().includes(lowerCaseQuery);
+};
+
+const CloudIntegrationsList = ({
+  search,
+  integrations,
+  cloudAccessById,
+  isLoading,
+  value,
+  onChange,
+}: {
+  search: string;
+  integrations?: CloudRole[];
+  cloudAccessById: Record<string, CloudAccess>;
+  isLoading: boolean;
+  value?: PolicyRuleResource;
+  onChange: (integration: CloudRole) => void;
+}) => {
+  const [filteredItems, _, setSearch] = useSearch(
+    integrations || [],
+    cloudIntegrationsSearchPredicate,
+    { filter: true, debounce: 150 },
+  );
+
+  useEffect(() => {
+    setSearch(search);
+  }, [search, setSearch]);
+
+  if (isLoading) {
+    return (
+      <div className={"max-h-[195px] flex flex-col gap-1 py-2 px-2"}>
+        <Skeleton height={42} className={"rounded-md"} />
+        <Skeleton height={42} className={"rounded-md"} />
+      </div>
+    );
+  }
+
+  if (search != "" && filteredItems.length == 0) {
+    return (
+      <DropdownInfoText className={"mt-5 max-w-sm mx-auto"}>
+        There are no cloud roles matching your search. Please try a
+        different search term.
+      </DropdownInfoText>
+    );
+  }
+
+  if (search == "" && filteredItems.length == 0) {
+    return (
+      <DropdownInfoText className={"mt-5 max-w-sm mx-auto"}>
+        There are no cloud roles configured yet. <br />
+        Go to{" "}
+        <InlineLink href={"/cloud-access"}>Cloud Access</InlineLink>{" "}
+        to add one.
+      </DropdownInfoText>
+    );
+  }
+
+  return (
+    <Radio defaultValue={value?.id} name={"cloudIntegration"} value={value?.id}>
+      <ScrollArea className={"max-h-[195px] flex flex-col gap-1 py-2 px-2"}>
+        {filteredItems.map((integration) => (
+          <CommandItem
+            key={integration.id}
+            value={integration.id}
+            onSelect={() => onChange(integration)}
+            onClick={(e) => e.preventDefault()}
+          >
+            <div className={"flex items-center gap-2"}>
+              <Badge
+                useHover={false}
+                variant={"gray-ghost"}
+                className={cn("transition-all group whitespace-nowrap h-7")}
+                onClick={(e) => e.preventDefault()}
+              >
+                <CloudIcon size={12} className={"shrink-0"} />
+                <TextWithTooltip text={integration.name} maxChars={24} />
+              </Badge>
+            </div>
+            <div
+              className={
+                "text-neutral-500 dark:text-nb-gray-300 font-medium flex items-center gap-3"
+              }
+            >
+              {(() => {
+                const parent = cloudAccessById[integration.cloud_access_id];
+                return parent
+                  ? `${cloudProviderNameLabels[parent.provider]} (${parent.provider_account_id})`
+                  : null;
+              })()}
+              <RadioItem value={integration.id} />
+            </div>
+          </CommandItem>
+        ))}
+      </ScrollArea>
     </Radio>
   );
 };

@@ -107,6 +107,7 @@ export const NodeContextMenu = ({
     setSelectedDestinationGroup,
     refreshLiveViewRef,
     setLiveResourceEditor,
+    setLiveCloudRoleEditor,
   } = useCanvasState();
   const { focusedNodeId, setFocusedNodeId, setSelectedPeerPanel } =
     useDestinationGroup();
@@ -529,6 +530,34 @@ export const NodeContextMenu = ({
     [liveResourceOf, confirm, setLiveResourceEditor],
   );
 
+  const liveCloudRoleOf = useCallback((n: Node) => {
+    const cloudRole = (n.data as { cloudRole?: { id?: string; name?: string; cloud_access_id?: string } })
+      ?.cloudRole;
+    return cloudRole?.id && cloudRole.cloud_access_id ? { cloudRole } : null;
+  }, []);
+
+  const handleLiveEditCloudRole = useCallback(
+    async (n: Node) => {
+      const ref = liveCloudRoleOf(n);
+      if (!ref) return;
+      const choice = await confirm({
+        title: `Edit cloud role “${ref.cloudRole.name ?? "Role"}”?`,
+        description:
+          "You are in live mode. Saving your changes will apply them to your account immediately.",
+        confirmText: "Edit",
+        cancelText: "Cancel",
+        type: "warning",
+        dismissOnOutsideClick: true,
+      });
+      if (!choice) return;
+      setLiveCloudRoleEditor({
+        roleId: ref.cloudRole.id!,
+        cloudAccessId: ref.cloudRole.cloud_access_id!,
+      });
+    },
+    [liveCloudRoleOf, confirm, setLiveCloudRoleEditor],
+  );
+
   const handleLiveToggleResource = useCallback(
     async (n: Node) => {
       const ref = liveResourceOf(n);
@@ -839,6 +868,17 @@ export const NodeContextMenu = ({
               onClick: () => void handleLiveToggleResource(node),
             },
           );
+        }
+        return items;
+      }
+      if (isResourceNode && liveCloudRoleOf(node)) {
+        const items: MenuItem[] = [...focusItems(node)];
+        if (permission.cloud_access?.update) {
+          items.push({
+            label: "Edit",
+            icon: <SquarePenIcon size={14} />,
+            onClick: () => void handleLiveEditCloudRole(node),
+          });
         }
         return items;
       }
@@ -1172,6 +1212,8 @@ export const NodeContextMenu = ({
     liveResourceOf,
     handleLiveEditResource,
     handleLiveToggleResource,
+    liveCloudRoleOf,
+    handleLiveEditCloudRole,
     handleLiveRenameGroup,
     nodeId,
     nodePolicy,
@@ -1184,6 +1226,7 @@ export const NodeContextMenu = ({
     permission.networks.create,
     permission.networks.update,
     permission.networks.delete,
+    permission.cloud_access?.update,
     handleLiveEditPolicy,
     handleViewNetworkDetails,
     handleLiveTogglePolicy,

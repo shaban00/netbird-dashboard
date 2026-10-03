@@ -25,11 +25,14 @@ import {
 } from "@/modules/control-center/utils/helpers";
 import { AllHandles } from "@/modules/control-center/handles/AllHandles";
 import { ConnectHandle } from "@/modules/control-center/handles/ConnectHandle";
+import { CloudRole } from "@/interfaces/CloudAccess";
 
 type ResourceNode = Node<
   {
     resource?: NetworkResource;
     peer?: Peer;
+    cloudRole?: CloudRole;
+    cloudAccessProviderAccountId?: string;
     enabled?: boolean;
     showHandles?: boolean;
     className?: string;
@@ -43,7 +46,14 @@ type ResourceNode = Node<
 >;
 
 export const ResourceNode = ({ data, id, parentId }: ResourceNode) => {
-  const { enabled, resource, peer, showHandles = false, className } = data;
+  const {
+    enabled,
+    resource,
+    peer,
+    cloudRole,
+    showHandles = false,
+    className,
+  } = data;
   const sourceGroupEnabled = useAnySourceGroupEnabled(
     id,
     enabled !== undefined,
@@ -74,7 +84,7 @@ export const ResourceNode = ({ data, id, parentId }: ResourceNode) => {
   const standaloneCard = isDraft
     ? !isFramed || isDrilledChild
     : !isFramed && (!!data.draftNetwork || !!data.standalone);
-  if (cardResource && standaloneCard) {
+  if ((cardResource || cloudRole) && standaloneCard) {
     return (
       <StandaloneResourceNode
         id={id}

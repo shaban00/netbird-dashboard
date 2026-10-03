@@ -45,6 +45,7 @@ import {
   getIpPlaceholderFromRange,
 } from "@/modules/control-center/utils/helpers";
 import { useAccount } from "@/modules/account/useAccount";
+import CloudRoleModal from "@/modules/cloud-access/CloudRoleModal";
 
 interface CanvasState {
   nodes: Node[];
@@ -73,6 +74,10 @@ interface CanvasState {
   liveResourceEditor: { resourceId: string; networkId: string } | null;
   setLiveResourceEditor: (
     v: { resourceId: string; networkId: string } | null,
+  ) => void;
+  liveCloudRoleEditor: { roleId: string; cloudAccessId: string } | null;
+  setLiveCloudRoleEditor: (
+    v: { roleId: string; cloudAccessId: string } | null,
   ) => void;
   contextMenuNodeId: string;
   setContextMenuNodeId: (v: string) => void;
@@ -219,6 +224,10 @@ export function CanvasStateProvider({
     resourceId: string;
     networkId: string;
   } | null>(null);
+  const [liveCloudRoleEditor, setLiveCloudRoleEditor] = useState<{
+    roleId: string;
+    cloudAccessId: string;
+  } | null>(null);
   const [focusedNodeId, setFocusedNodeId] = useState("");
   const [highlightArmed, setHighlightArmed] = useState(false);
   const [contextMenuNodeId, setContextMenuNodeIdState] = useState("");
@@ -263,6 +272,8 @@ export function CanvasStateProvider({
       setSelectedDestinationGroup,
       liveResourceEditor,
       setLiveResourceEditor,
+      liveCloudRoleEditor,
+      setLiveCloudRoleEditor,
       contextMenuNodeId,
       setContextMenuNodeId,
       loggedInUser,
@@ -285,6 +296,7 @@ export function CanvasStateProvider({
       selectedUser,
       selectedDestinationGroup,
       liveResourceEditor,
+      liveCloudRoleEditor,
       contextMenuNodeId,
       loggedInUser,
     ],
@@ -496,6 +508,47 @@ export function ControlCenterUIProvider({
                     />
                   </NetworkProvider>
                 </NetworkAccessControlProvider>
+              );
+            })()}
+          {canvas.liveCloudRoleEditor &&
+            (() => {
+              const access = data.cloudAccess?.find(
+                (a) => a.id === canvas.liveCloudRoleEditor?.cloudAccessId,
+              );
+              const role = data.cloudRoles?.find(
+                (r) => r.id === canvas.liveCloudRoleEditor?.roleId,
+              );
+              if (!access || !role) return null;
+              return (
+                <CloudRoleModal
+                  open={true}
+                  onClose={() => canvas.setLiveCloudRoleEditor(null)}
+                  access={access}
+                  role={role}
+                  onCreated={() => canvas.setLiveCloudRoleEditor(null)}
+                  onUpdated={(r) => {
+                    canvas.setNodes((prev) =>
+                      prev.map((n) => {
+                        const cr = n.data?.cloudRole as
+                          | { id?: string }
+                          | undefined;
+                        if (!cr || cr.id !== r.id) return n;
+                        return {
+                          ...n,
+                          data: {
+                            ...n.data,
+                            cloudRole: r,
+                          },
+                        };
+                      }),
+                    );
+                    void mutate("/cloud-roles");
+                    void mutate("/cloud-access");
+                    void mutate(`/cloud-access/${access.id}`);
+                    void mutate(`/cloud-access/${access.id}/roles`);
+                    canvas.setLiveCloudRoleEditor(null);
+                  }}
+                />
               );
             })()}
         </div>

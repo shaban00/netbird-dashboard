@@ -52,6 +52,7 @@ import {
 import { NetworkAccessControlProvider } from "@/modules/networks/NetworkAccessControlProvider";
 import { NetworkProvider } from "@/modules/networks/NetworkProvider";
 import NetworkResourceModal from "@/modules/networks/resources/NetworkResourceModal";
+import { e2eHooksEnabled } from "@utils/netbird";
 
 interface CanvasState {
   nodes: Node[];
@@ -184,7 +185,7 @@ export function CanvasStateProvider({
 
   // The canvas lives only in React, so mirror a projection onto window for e2e.
   useEffect(() => {
-    if (process.env.APP_ENV !== "test") return;
+    if (!e2eHooksEnabled()) return;
     (window as unknown as { __ccDraftCanvas?: unknown }).__ccDraftCanvas = {
       nodes: nodes.map((n) => ({
         id: n.id,
